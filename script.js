@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Validates the selected file.
-     * For now, it only checks if it's a PDF.
+     * For now, it only checks if it's a PDF or DOCX.
      * @param {File} file - The file to validate.
      * @returns {boolean} - True if the file is valid, false otherwise.
      */
@@ -115,9 +115,13 @@ document.addEventListener('DOMContentLoaded', () => {
             updateProcessingStatus('Erreur : Aucun fichier fourni.', true);
             return false;
         }
-        if (file.type !== 'application/pdf') {
-            updateProcessingStatus(`Erreur : Le fichier "${file.name}" n'est pas un PDF. Veuillez sélectionner un fichier PDF.`, true);
-            alert(`Erreur : Le fichier "${file.name}" n'est pas un PDF. Veuillez sélectionner un fichier PDF.`);
+        const acceptedTypes = [
+            'application/pdf', 
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' // DOCX
+        ];
+        if (!acceptedTypes.includes(file.type)) {
+            updateProcessingStatus(`Erreur : Le fichier "${file.name}" n'est pas un PDF ou un DOCX. Veuillez sélectionner un fichier PDF ou DOCX.`, true);
+            alert(`Erreur : Le fichier "${file.name}" n'est pas un PDF ou un DOCX. Veuillez sélectionner un fichier PDF ou DOCX.`);
             return false;
         }
         
@@ -131,82 +135,97 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Displays a preview of the selected PDF file using PDF.js.
-     * @param {File} file - The PDF file to preview.
+     * Displays a preview of the selected PDF file using PDF.js, or a message for DOCX.
+     * @param {File} file - The file to preview.
      */
     async function previewFile(file) {
-        if (!cvPreviewArea || !file || typeof pdfjsLib === 'undefined') {
+        if (!cvPreviewArea || !file) {
             if (cvPreviewArea) {
                 cvPreviewArea.innerHTML = '<p>Erreur lors de l\'initialisation de l\'aperçu.</p>';
                 cvPreviewArea.style.color = 'red';
             }
-            console.error('PDF.js library not found or cvPreviewArea is null.');
+            console.error('cvPreviewArea is null.');
             return;
         }
 
-        const fileReader = new FileReader();
+        cvPreviewArea.innerHTML = ''; // Clear previous preview or placeholder text
+        cvPreviewArea.style.color = 'var(--klanik-dark-text)'; // Reset color
 
-        fileReader.onload = async function() {
-            const typedarray = new Uint8Array(this.result);
-            try {
-                cvPreviewArea.innerHTML = ''; // Clear previous preview or placeholder text
-                const loadingTask = pdfjsLib.getDocument({data: typedarray});
-                const pdf = await loadingTask.promise;
-                
-                if (pdf.numPages === 0) {
-                    cvPreviewArea.innerHTML = '<p>Le PDF ne contient aucune page.</p>';
-                    cvPreviewArea.style.color = 'var(--klanik-dark-text)';
-                    return;
+        // Display basic metadata for all file types
+        const metadataDiv = document.createElement('div');
+        let filePages = 'N/A'; // Default for non-PDFs
+
+        if (file.type === 'application/pdf' && typeof pdfjsLib !== 'undefined') {
+            const fileReader = new FileReader();
+            fileReader.onload = async function() {
+                const typedarray = new Uint8Array(this.result);
+                try {
+                    const loadingTask = pdfjsLib.getDocument({data: typedarray});
+                    const pdf = await loadingTask.promise;
+                    filePages = pdf.numPages;
+                    
+                    if (pdf.numPages === 0) {
+                        cvPreviewArea.innerHTML = '<p>Le PDF ne contient aucune page.</p>';
+                    } else {
+                        const pageNumber = 1; // Preview the first page
+                        const page = await pdf.getPage(pageNumber);
+                        
+                        const viewport = page.getViewport({ scale: 1 });
+                        const desiredWidth = cvPreviewArea.clientWidth > 0 ? cvPreviewArea.clientWidth - 20 : 250; // Subtract padding
+                        const scaledViewport = page.getViewport({ scale: desiredWidth / viewport.width });
+
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = scaledViewport.height;
+                        canvas.width = scaledViewport.width;
+                        canvas.style.maxWidth = '100%';
+                        canvas.style.maxHeight = '300px'; 
+
+                        const renderContext = {
+                            canvasContext: context,
+                            viewport: scaledViewport
+                        };
+                        await page.render(renderContext).promise;
+                        cvPreviewArea.appendChild(canvas);
+                    }
+                } catch (reason) {
+                    console.error('Error during PDF preview rendering: ', reason);
+                    cvPreviewArea.innerHTML = `<p>Impossible d'afficher l'aperçu du PDF. Le fichier est peut-être corrompu ou non supporté.</p>`;
+                    cvPreviewArea.style.color = 'red';
+                } finally {
+                    appendMetadata(); // Append metadata after PDF processing
                 }
-
-                const pageNumber = 1; // Preview the first page
-                const page = await pdf.getPage(pageNumber);
-                
-                const viewport = page.getViewport({ scale: 1 });
-                // Adjust scale to fit the preview area width, e.g., 250px
-                const desiredWidth = cvPreviewArea.clientWidth > 0 ? cvPreviewArea.clientWidth - 20 : 250; // Subtract padding
-                const scaledViewport = page.getViewport({ scale: desiredWidth / viewport.width });
-
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = scaledViewport.height;
-                canvas.width = scaledViewport.width;
-                canvas.style.maxWidth = '100%';
-                canvas.style.maxHeight = '300px'; // Max height for the preview
-
-                const renderContext = {
-                    canvasContext: context,
-                    viewport: scaledViewport
-                };
-                await page.render(renderContext).promise;
-                
-                cvPreviewArea.appendChild(canvas);
-                cvPreviewArea.style.color = 'var(--klanik-dark-text)'; // Reset color if it was an error
-                
-                // Display basic metadata
-                const metadataDiv = document.createElement('div');
-                metadataDiv.innerHTML = `
-                    <p style="margin-top: 10px; font-size: 0.9em;">
-                        Nom: ${file.name}<br>
-                        Taille: ${(file.size / 1024).toFixed(2)} KB<br>
-                        Pages: ${pdf.numPages}
-                    </p>`;
-                cvPreviewArea.appendChild(metadataDiv);
-
-            } catch (reason) {
-                console.error('Error during PDF preview rendering: ', reason);
-                cvPreviewArea.innerHTML = `<p>Impossible d'afficher l'aperçu du PDF. Le fichier est peut-être corrompu ou non supporté.</p>`;
+            };
+            fileReader.onerror = function() {
+                console.error('FileReader error.');
+                cvPreviewArea.innerHTML = '<p>Erreur lors de la lecture du fichier PDF.</p>';
                 cvPreviewArea.style.color = 'red';
-            }
-        };
+                appendMetadata(); // Still try to append metadata
+            };
+            fileReader.readAsArrayBuffer(file);
+        } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            const docxMessage = document.createElement('p');
+            docxMessage.textContent = `Fichier DOCX sélectionné : ${file.name}. L'aperçu n'est pas disponible pour les fichiers DOCX.`;
+            cvPreviewArea.appendChild(docxMessage);
+            appendMetadata(); // Append metadata for DOCX
+        } else {
+            // Fallback for other unexpected types, though validation should prevent this
+            const unknownMessage = document.createElement('p');
+            unknownMessage.textContent = `Type de fichier non supporté pour l'aperçu : ${file.name}`;
+            cvPreviewArea.appendChild(unknownMessage);
+            appendMetadata(); // Append metadata
+        }
 
-        fileReader.onerror = function() {
-            console.error('FileReader error.');
-            cvPreviewArea.innerHTML = '<p>Erreur lors de la lecture du fichier.</p>';
-            cvPreviewArea.style.color = 'red';
-        };
-        
-        fileReader.readAsArrayBuffer(file);
+        function appendMetadata() {
+            metadataDiv.innerHTML = `
+                <p style="margin-top: 10px; font-size: 0.9em;">
+                    Nom: ${file.name}<br>
+                    Type: ${file.type}<br>
+                    Taille: ${(file.size / 1024).toFixed(2)} KB<br>
+                    ${file.type === 'application/pdf' ? `Pages: ${filePages}` : ''}
+                </p>`;
+            cvPreviewArea.appendChild(metadataDiv);
+        }
     }
     
     /**
