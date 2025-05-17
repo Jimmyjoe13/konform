@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const consultantSelect = document.getElementById('consultant-select');
     const cvUploadInput = document.getElementById('cv-upload');
+    const cvUploadButton = document.getElementById('cv-upload-button');
+    const dropZone = document.getElementById('drop-zone');
     const transformButton = document.getElementById('transform-button');
     const cvPreviewArea = document.getElementById('cv-preview-area');
     const processingStatus = document.getElementById('processing-status');
@@ -25,7 +27,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event listener for file input
     if (cvUploadInput) {
-        cvUploadInput.addEventListener('change', handleFileSelect);
+        cvUploadInput.addEventListener('change', (event) => processFile(event.target.files[0]));
+    }
+
+    // Event listener for the "Sélectionner un fichier" button
+    if (cvUploadButton) {
+        cvUploadButton.addEventListener('click', () => {
+            if (cvUploadInput) {
+                cvUploadInput.click();
+            }
+        });
+    }
+
+    // Event listeners for drag and drop
+    if (dropZone) {
+        dropZone.addEventListener('click', () => { // Allow click on drop zone to open file dialog
+            if (cvUploadInput) {
+                cvUploadInput.click();
+            }
+        });
+        dropZone.addEventListener('dragover', (event) => {
+            event.preventDefault(); // Prevent default behavior (Prevent file from being opened)
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        dropZone.addEventListener('drop', (event) => {
+            event.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (event.dataTransfer.files && event.dataTransfer.files[0]) {
+                const file = event.dataTransfer.files[0];
+                processFile(file);
+                // Manually set the file to the input for consistency, though not strictly necessary if processFile handles it
+                // This helps if other parts of the script expect cvUploadInput.files to be populated
+                if (cvUploadInput) {
+                    try {
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(file);
+                        cvUploadInput.files = dataTransfer.files;
+                    } catch (e) {
+                        console.warn("Could not set files on input type=file programmatically:", e);
+                        // Fallback or alternative handling if direct assignment isn't supported/working
+                    }
+                }
+            }
+        });
     }
 
     // Event listener for the transform button
@@ -34,23 +81,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Handles the file selection event.
-     * @param {Event} event - The file input change event.
+     * Processes the selected file (either from input or drag & drop).
+     * @param {File} file - The file object.
      */
-    function handleFileSelect(event) {
-        const file = event.target.files[0];
+    function processFile(file) {
         if (file) {
-            console.log('File selected:', file.name, file.type, file.size);
+            console.log('File selected/dropped:', file.name, file.type, file.size);
             if (validateFile(file)) {
                 previewFile(file);
                 updateProcessingStatus(`Fichier "${file.name}" prêt pour transformation.`);
-                // If a file is manually uploaded, deselect consultant
                 if (consultantSelect) {
-                    consultantSelect.value = '';
+                    consultantSelect.value = ''; // Deselect consultant if a file is chosen
                 }
             } else {
-                // Reset file input if validation fails
-                event.target.value = ''; 
+                if (cvUploadInput) {
+                    cvUploadInput.value = ''; // Reset file input if validation fails
+                }
             }
         } else {
             clearCvPreview();
@@ -74,27 +120,93 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Erreur : Le fichier "${file.name}" n'est pas un PDF. Veuillez sélectionner un fichier PDF.`);
             return false;
         }
-        // Add size validation if needed (e.g., max 10MB)
-        // const maxSize = 10 * 1024 * 1024; // 10MB
-        // if (file.size > maxSize) {
-        //     updateProcessingStatus(`Erreur : Le fichier est trop volumineux (max 10MB).`, true);
-        //     alert(`Erreur : Le fichier est trop volumineux (max 10MB).`);
-        //     return false;
-        // }
+        
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            updateProcessingStatus(`Erreur : Le fichier "${file.name}" est trop volumineux (max 10MB). Sa taille est de ${(file.size / 1024 / 1024).toFixed(2)} MB.`, true);
+            alert(`Erreur : Le fichier "${file.name}" est trop volumineux (max 10MB). Sa taille est de ${(file.size / 1024 / 1024).toFixed(2)} MB.`);
+            return false;
+        }
         return true;
     }
 
     /**
-     * Displays a preview of the selected file (placeholder).
-     * @param {File} file - The file to preview.
+     * Displays a preview of the selected PDF file using PDF.js.
+     * @param {File} file - The PDF file to preview.
      */
-    function previewFile(file) {
-        if (cvPreviewArea) {
-            // For now, just display the file name and type.
-            // PDF.js integration will happen in a later step.
-            cvPreviewArea.innerHTML = `<p>Fichier sélectionné : ${file.name} (${(file.size / 1024).toFixed(2)} KB)</p><p>Type : ${file.type}</p>`;
-            cvPreviewArea.style.color = 'var(--klanik-dark-text)'; // Make text visible
+    async function previewFile(file) {
+        if (!cvPreviewArea || !file || typeof pdfjsLib === 'undefined') {
+            if (cvPreviewArea) {
+                cvPreviewArea.innerHTML = '<p>Erreur lors de l\'initialisation de l\'aperçu.</p>';
+                cvPreviewArea.style.color = 'red';
+            }
+            console.error('PDF.js library not found or cvPreviewArea is null.');
+            return;
         }
+
+        const fileReader = new FileReader();
+
+        fileReader.onload = async function() {
+            const typedarray = new Uint8Array(this.result);
+            try {
+                cvPreviewArea.innerHTML = ''; // Clear previous preview or placeholder text
+                const loadingTask = pdfjsLib.getDocument({data: typedarray});
+                const pdf = await loadingTask.promise;
+                
+                if (pdf.numPages === 0) {
+                    cvPreviewArea.innerHTML = '<p>Le PDF ne contient aucune page.</p>';
+                    cvPreviewArea.style.color = 'var(--klanik-dark-text)';
+                    return;
+                }
+
+                const pageNumber = 1; // Preview the first page
+                const page = await pdf.getPage(pageNumber);
+                
+                const viewport = page.getViewport({ scale: 1 });
+                // Adjust scale to fit the preview area width, e.g., 250px
+                const desiredWidth = cvPreviewArea.clientWidth > 0 ? cvPreviewArea.clientWidth - 20 : 250; // Subtract padding
+                const scaledViewport = page.getViewport({ scale: desiredWidth / viewport.width });
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = scaledViewport.height;
+                canvas.width = scaledViewport.width;
+                canvas.style.maxWidth = '100%';
+                canvas.style.maxHeight = '300px'; // Max height for the preview
+
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: scaledViewport
+                };
+                await page.render(renderContext).promise;
+                
+                cvPreviewArea.appendChild(canvas);
+                cvPreviewArea.style.color = 'var(--klanik-dark-text)'; // Reset color if it was an error
+                
+                // Display basic metadata
+                const metadataDiv = document.createElement('div');
+                metadataDiv.innerHTML = `
+                    <p style="margin-top: 10px; font-size: 0.9em;">
+                        Nom: ${file.name}<br>
+                        Taille: ${(file.size / 1024).toFixed(2)} KB<br>
+                        Pages: ${pdf.numPages}
+                    </p>`;
+                cvPreviewArea.appendChild(metadataDiv);
+
+            } catch (reason) {
+                console.error('Error during PDF preview rendering: ', reason);
+                cvPreviewArea.innerHTML = `<p>Impossible d'afficher l'aperçu du PDF. Le fichier est peut-être corrompu ou non supporté.</p>`;
+                cvPreviewArea.style.color = 'red';
+            }
+        };
+
+        fileReader.onerror = function() {
+            console.error('FileReader error.');
+            cvPreviewArea.innerHTML = '<p>Erreur lors de la lecture du fichier.</p>';
+            cvPreviewArea.style.color = 'red';
+        };
+        
+        fileReader.readAsArrayBuffer(file);
     }
     
     /**

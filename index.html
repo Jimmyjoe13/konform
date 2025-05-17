@@ -35,9 +35,10 @@
 
         <section class="cv-upload-section">
             <h2>Gestion du CV</h2>
-            <div class="form-group">
-                <label for="cv-upload">Ou télécharger un CV manuellement :</label>
-                <input type="file" id="cv-upload" name="cv-file" accept=".pdf">
+            <div id="drop-zone" class="drop-zone-area">
+                <p>Glissez-déposez un fichier PDF ici ou cliquez pour sélectionner</p>
+                <input type="file" id="cv-upload" name="cv-file" accept=".pdf" style="display: none;">
+                <button type="button" id="cv-upload-button" class="secondary-button">Sélectionner un fichier</button>
             </div>
         </section>
 
@@ -62,6 +63,10 @@
         <p>&copy; 2025 Klanik - Tous droits réservés</p>
     </footer>
     
+    <!-- PDF.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';</script>
+
     <script src="script.js"></script>
 </body>
 </html>
