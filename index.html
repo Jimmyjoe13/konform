@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KonForm - Klanik</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <!-- Le logo Klanik sera ajouté ici (peut-être un SVG ou une image) -->
+            <span class="logo-text">KLANIK</span>
+            <span class="logo-subtitle">HUMAN MADE TECHNOLOGY</span>
+        </div>
+        <div class="app-title-container">
+            <h1>KonForm</h1>
+        </div>
+    </header>
+    
+    <main>
+        <section class="consultant-selection-section">
+            <h2>Sélection du Consultant</h2>
+            <div class="form-group">
+                <label for="consultant-select">Choisir un consultant :</label>
+                <select id="consultant-select" name="consultant">
+                    <option value="">-- Veuillez choisir un consultant --</option>
+                    <option value="consultant1">Jean Dupont</option>
+                    <option value="consultant2">Alice Martin</option>
+                    <option value="consultant3">Pierre Durand</option>
+                    <!-- D'autres consultants seront ajoutés dynamiquement -->
+                </select>
+            </div>
+        </section>
+
+        <section class="cv-upload-section">
+            <h2>Gestion du CV</h2>
+            <div class="form-group">
+                <label for="cv-upload">Ou télécharger un CV manuellement :</label>
+                <input type="file" id="cv-upload" name="cv-file" accept=".pdf">
+            </div>
+        </section>
+
+        <section class="cv-preview-section">
+            <h2>Aperçu du CV</h2>
+            <div id="cv-preview-area" class="preview-area">
+                <!-- L'aperçu du CV sera affiché ici -->
+                <p>L'aperçu du CV apparaîtra ici.</p>
+            </div>
+        </section>
+
+        <section class="actions-section">
+            <button id="transform-button" class="cta-button">Transformer</button>
+            <div id="processing-status" class="status-area">
+                <p>Prêt pour le traitement.</p>
+                <!-- Le statut du traitement sera mis à jour ici -->
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Klanik - Tous droits réservés</p>
+    </footer>
+    
+    <script src="script.js"></script>
+</body>
+</html>

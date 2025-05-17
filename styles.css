@@ -1,0 +1,164 @@
+:root {
+    --klanik-blue: #0046cc;
+    --klanik-light-blue: #f0f6ff; /* A lighter shade for backgrounds or accents */
+    --klanik-dark-text: #333333; /* For body text */
+    --klanik-light-text: #ffffff; /* For text on dark backgrounds */
+    --klanik-grey-border: #cccccc; /* For borders and dividers */
+    --klanik-grey-bg: #f8f9fa; /* Light grey background for sections */
+
+    --font-primary: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --spacing-unit: 8px; /* Base unit for margins, paddings */
+}
+
+body {
+    font-family: var(--font-primary);
+    margin: 0;
+    padding: 0;
+    background-color: var(--klanik-grey-bg);
+    color: var(--klanik-dark-text);
+    line-height: 1.6;
+}
+
+header {
+    background-color: var(--klanik-light-text);
+    padding: calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--klanik-grey-border);
+}
+
+.logo-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.logo-text {
+    font-size: 2em;
+    font-weight: bold;
+    color: var(--klanik-blue);
+}
+
+.logo-subtitle {
+    font-size: 0.8em;
+    color: var(--klanik-dark-text);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.app-title-container h1 {
+    margin: 0;
+    font-size: 1.8em;
+    color: var(--klanik-blue);
+    font-weight: normal;
+}
+
+main {
+    padding: calc(var(--spacing-unit) * 3);
+    max-width: 900px;
+    margin: auto;
+}
+
+section {
+    background-color: var(--klanik-light-text);
+    padding: calc(var(--spacing-unit) * 2.5);
+    margin-bottom: calc(var(--spacing-unit) * 3);
+    border-radius: var(--spacing-unit);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+section h2 {
+    margin-top: 0;
+    color: var(--klanik-blue);
+    border-bottom: 2px solid var(--klanik-light-blue);
+    padding-bottom: var(--spacing-unit);
+    margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.form-group {
+    margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--spacing-unit);
+    font-weight: bold;
+}
+
+.form-group select,
+.form-group input[type="file"] {
+    width: 100%;
+    padding: var(--spacing-unit);
+    border: 1px solid var(--klanik-grey-border);
+    border-radius: calc(var(--spacing-unit) / 2);
+    box-sizing: border-box;
+}
+
+.preview-area {
+    border: 2px dashed var(--klanik-grey-border);
+    padding: calc(var(--spacing-unit) * 2);
+    min-height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: var(--klanik-grey-border);
+    background-color: var(--klanik-light-blue);
+    border-radius: calc(var(--spacing-unit) / 2);
+}
+
+.cta-button {
+    background-color: var(--klanik-blue);
+    color: var(--klanik-light-text);
+    padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 3);
+    border: none;
+    border-radius: calc(var(--spacing-unit) / 2);
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: block;
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto calc(var(--spacing-unit) * 2) auto; /* Center button and add margin below */
+}
+
+.cta-button:hover {
+    background-color: #003399; /* Darker shade of blue */
+}
+
+.status-area {
+    text-align: center;
+    padding: var(--spacing-unit);
+    background-color: var(--klanik-light-blue);
+    border: 1px solid var(--klanik-grey-border);
+    border-radius: calc(var(--spacing-unit) / 2);
+    margin-top: var(--spacing-unit);
+}
+
+footer {
+    text-align: center;
+    padding: calc(var(--spacing-unit) * 2);
+    background-color: var(--klanik-dark-text);
+    color: var(--klanik-light-text);
+    font-size: 0.9em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .app-title-container {
+        margin-top: var(--spacing-unit);
+    }
+
+    main {
+        padding: calc(var(--spacing-unit) * 2);
+    }
+
+    .cta-button {
+        width: 100%;
+    }
+}
