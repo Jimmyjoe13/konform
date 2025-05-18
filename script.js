@@ -280,36 +280,55 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {File} file - The file to send.
      */
     async function sendFileToWebhook(file) {
-        const formData = new FormData();
-        formData.append('file', file); // n8n expects the file under the key 'file'
-
-        updateProcessingStatus(`Envoi de "${file.name}" au webhook...`);
+        updateProcessingStatus(`Lecture du fichier "${file.name}" en format binaire...`);
         transformButton.disabled = true;
 
-        try {
-            const response = await fetch(N8N_WEBHOOK_URL, {
-                method: 'POST',
-                body: formData,
-                // 'Content-Type': 'multipart/form-data' is automatically set by browser with FormData
-            });
+        const reader = new FileReader();
 
-            if (response.ok) {
-                const transformedPdfBlob = await response.blob();
-                updateProcessingStatus(`Fichier "${file.name}" transformé avec succès!`);
-                handleTransformedPDF(transformedPdfBlob, `CV_${file.name.replace(/\.pdf$/i, '')}_Klanik_Transformé.pdf`);
-            } else {
-                const errorText = await response.text();
-                console.error('Webhook error response:', errorText);
-                updateProcessingStatus(`Erreur lors du traitement du fichier "${file.name}". Statut: ${response.status}. ${errorText}`, true);
-                alert(`Erreur du serveur: ${response.status}. Détails: ${errorText}`);
+        reader.onload = async (event) => {
+            const fileArrayBuffer = event.target.result; // This is the ArrayBuffer
+
+            updateProcessingStatus(`Envoi de "${file.name}" (binaire) au webhook...`);
+
+            try {
+                const response = await fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/octet-stream', // Indicate binary data
+                        // Add a filename header if n8n needs it explicitly
+                        'X-Filename': file.name 
+                    },
+                    body: fileArrayBuffer, // Send the ArrayBuffer directly
+                });
+
+                if (response.ok) {
+                    const transformedPdfBlob = await response.blob();
+                    // Ensure the filename for download is correctly generated
+                    const originalFileNameWithoutExtension = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                    handleTransformedPDF(transformedPdfBlob, `CV_${originalFileNameWithoutExtension}_Klanik_Transformé.pdf`);
+                } else {
+                    const errorText = await response.text();
+                    console.error('Webhook error response:', errorText);
+                    updateProcessingStatus(`Erreur lors du traitement du fichier "${file.name}". Statut: ${response.status}. ${errorText}`, true);
+                    alert(`Erreur du serveur: ${response.status}. Détails: ${errorText}`);
+                }
+            } catch (error) {
+                console.error('Erreur de connexion au webhook:', error);
+                updateProcessingStatus(`Erreur de connexion lors de l'envoi du fichier "${file.name}". Vérifiez la console.`, true);
+                alert(`Erreur de connexion: ${error.message}`);
+            } finally {
+                transformButton.disabled = false;
             }
-        } catch (error) {
-            console.error('Erreur de connexion au webhook:', error);
-            updateProcessingStatus(`Erreur de connexion lors de l'envoi du fichier "${file.name}". Vérifiez la console.`, true);
-            alert(`Erreur de connexion: ${error.message}`);
-        } finally {
+        };
+
+        reader.onerror = () => {
+            console.error('FileReader error.');
+            updateProcessingStatus(`Erreur lors de la lecture du fichier "${file.name}".`, true);
+            alert(`Erreur lors de la lecture du fichier.`);
             transformButton.disabled = false;
-        }
+        };
+
+        reader.readAsArrayBuffer(file); // Read the file as ArrayBuffer
     }
     
     /**
