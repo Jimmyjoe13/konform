@@ -275,60 +275,127 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Sends the file to the n8n webhook.
-     * (This is a placeholder and will be fully implemented in Étape 4)
-     * @param {File} file - The file to send.
+     * Extracts text content from PDF files using PDF.js
+     * @param {File} file - The PDF file to extract text from
+     * @returns {Promise<string>} - The extracted text content
+     */
+    async function extractTextFromPDF(file) {
+        return new Promise((resolve, reject) => {
+            const fileReader = new FileReader();
+            fileReader.onload = async function() {
+                try {
+                    const typedarray = new Uint8Array(this.result);
+                    const loadingTask = pdfjsLib.getDocument({data: typedarray});
+                    const pdf = await loadingTask.promise;
+                    
+                    let fullText = '';
+                    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                        const page = await pdf.getPage(pageNum);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += pageText + '\n';
+                    }
+                    resolve(fullText.trim());
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            fileReader.onerror = () => reject(new Error('Erreur lors de la lecture du fichier PDF'));
+            fileReader.readAsArrayBuffer(file);
+        });
+    }
+
+    /**
+     * Extracts text content from DOCX files using mammoth.js
+     * @param {File} file - The DOCX file to extract text from
+     * @returns {Promise<string>} - The extracted text content
+     */
+    async function extractTextFromDOCX(file) {
+        return new Promise((resolve, reject) => {
+            const fileReader = new FileReader();
+            fileReader.onload = async function() {
+                try {
+                    const arrayBuffer = this.result;
+                    const result = await mammoth.extractRawText({arrayBuffer: arrayBuffer});
+                    resolve(result.value);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            fileReader.onerror = () => reject(new Error('Erreur lors de la lecture du fichier DOCX'));
+            fileReader.readAsArrayBuffer(file);
+        });
+    }
+
+    /**
+     * Sends the file content as text to the n8n webhook.
+     * @param {File} file - The file to process and send.
      */
     async function sendFileToWebhook(file) {
-        updateProcessingStatus(`Lecture du fichier "${file.name}" en format binaire...`);
+        updateProcessingStatus(`Extraction du contenu texte de "${file.name}"...`);
         transformButton.disabled = true;
 
-        const reader = new FileReader();
-
-        reader.onload = async (event) => {
-            const fileArrayBuffer = event.target.result; // This is the ArrayBuffer
-
-            updateProcessingStatus(`Envoi de "${file.name}" (binaire) au webhook...`);
-
-            try {
-                const response = await fetch(N8N_WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/octet-stream', // Indicate binary data
-                        // Add a filename header if n8n needs it explicitly
-                        'X-Filename': file.name 
-                    },
-                    body: fileArrayBuffer, // Send the ArrayBuffer directly
-                });
-
-                if (response.ok) {
-                    const transformedPdfBlob = await response.blob();
-                    // Ensure the filename for download is correctly generated
-                    const originalFileNameWithoutExtension = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-                    handleTransformedPDF(transformedPdfBlob, `CV_${originalFileNameWithoutExtension}_Klanik_Transformé.pdf`);
-                } else {
-                    const errorText = await response.text();
-                    console.error('Webhook error response:', errorText);
-                    updateProcessingStatus(`Erreur lors du traitement du fichier "${file.name}". Statut: ${response.status}. ${errorText}`, true);
-                    alert(`Erreur du serveur: ${response.status}. Détails: ${errorText}`);
-                }
-            } catch (error) {
-                console.error('Erreur de connexion au webhook:', error);
-                updateProcessingStatus(`Erreur de connexion lors de l'envoi du fichier "${file.name}". Vérifiez la console.`, true);
-                alert(`Erreur de connexion: ${error.message}`);
-            } finally {
-                transformButton.disabled = false;
+        try {
+            let textContent = '';
+            
+            // Extract text based on file type
+            if (file.type === 'application/pdf') {
+                updateProcessingStatus(`Extraction du texte du PDF "${file.name}"...`);
+                textContent = await extractTextFromPDF(file);
+            } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                updateProcessingStatus(`Extraction du texte du DOCX "${file.name}"...`);
+                textContent = await extractTextFromDOCX(file);
+            } else {
+                throw new Error(`Type de fichier non supporté: ${file.type}`);
             }
-        };
 
-        reader.onerror = () => {
-            console.error('FileReader error.');
-            updateProcessingStatus(`Erreur lors de la lecture du fichier "${file.name}".`, true);
-            alert(`Erreur lors de la lecture du fichier.`);
+            // Validate extracted content
+            if (!textContent || textContent.trim().length === 0) {
+                throw new Error('Aucun contenu texte extrait du fichier');
+            }
+
+            updateProcessingStatus(`Envoi du contenu texte au webhook...`);
+
+            // Prepare data to send
+            const dataToSend = {
+                filename: file.name,
+                fileType: file.type === 'application/pdf' ? 'pdf' : 'docx',
+                textContent: textContent.trim(),
+                metadata: {
+                    extractionMethod: 'client-side',
+                    timestamp: new Date().toISOString(),
+                    fileSize: file.size,
+                    contentLength: textContent.trim().length
+                }
+            };
+
+            const response = await fetch(N8N_WEBHOOK_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(dataToSend)
+            });
+
+            if (response.ok) {
+                const transformedPdfBlob = await response.blob();
+                // Ensure the filename for download is correctly generated
+                const originalFileNameWithoutExtension = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                handleTransformedPDF(transformedPdfBlob, `CV_${originalFileNameWithoutExtension}_Klanik_Transformé.pdf`);
+            } else {
+                const errorText = await response.text();
+                console.error('Webhook error response:', errorText);
+                updateProcessingStatus(`Erreur lors du traitement du fichier "${file.name}". Statut: ${response.status}. ${errorText}`, true);
+                alert(`Erreur du serveur: ${response.status}. Détails: ${errorText}`);
+            }
+
+        } catch (error) {
+            console.error('Erreur lors de l\'extraction ou de l\'envoi:', error);
+            updateProcessingStatus(`Erreur: ${error.message}`, true);
+            alert(`Erreur: ${error.message}`);
+        } finally {
             transformButton.disabled = false;
-        };
-
-        reader.readAsArrayBuffer(file); // Read the file as ArrayBuffer
+        }
     }
     
     /**

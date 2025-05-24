@@ -1,0 +1,265 @@
+{
+  "name": "KonForm",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Extraction et nettoyage du contenu texte reçu depuis l'interface web\ntry {\n  // Récupération des données depuis le webhook\n  const inputData = $input.first().json;\n  \n  // Validation de la présence de données\n  if (!inputData || !inputData.textContent) {\n    throw new Error('Aucun contenu texte reçu depuis l\\'interface web');\n  }\n  \n  // Extraction du contenu texte\n  const textContent = inputData.textContent;\n  const filename = inputData.filename || 'document_inconnu';\n  const fileType = inputData.fileType || 'unknown';\n  const metadata = inputData.metadata || {};\n  \n  // Nettoyage et formatage du texte\n  const cleanedText = textContent\n    .replace(/\\r\\n/g, '\\n')\n    .replace(/\\r/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .replace(/\\s+/g, ' ')\n    .trim();\n  \n  return [{\n    json: {\n      data: cleanedText,\n      metadata: {\n        extractionStatus: 'success',\n        contentLength: cleanedText.length,\n        processingMethod: 'client_side_extraction',\n        originalFilename: filename,\n        fileType: fileType,\n        clientMetadata: metadata\n      }\n    }\n  }];\n  \n} catch (error) {\n  return [{\n    json: {\n      data: '',\n      metadata: {\n        extractionStatus: 'error',\n        error: error.message,\n        processingMethod: 'client_side_extraction'\n      }\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        760
+      ],
+      "id": "f181d90a-82b6-47da-96c1-76ebe0697cc2",
+      "name": "Text Processing"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.data }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=# System Prompt: KonForm CV Parser pour Klanik\n\nVous êtes un agent IA spécialisé dans l'extraction et la structuration de données de CV pour le cabinet de conseil Klanik. Votre mission est de transformer un contenu de CV non structuré (texte extrait côté client) en données JSON structurées selon le format Klanik.\n\n## Rôle et Objectif\n\nExtraire avec précision les informations d'un CV et les structurer en JSON pour générer automatiquement un document technique Klanik standardisé, professionnel et cohérent.\n\n## Instructions de Parsing\n\n### 1. Informations Personnelles\n- **name** : Nom/initiales du consultant (ex: \"YBE\", \"MBE\")\n- **title** : Titre professionnel exact (ex: \"Développeur Java\", \"Business Analyst\")\n- **experience** : Nombre d'années d'expérience (format numérique en string)\n\n### 2. Compétences Techniques\n- **skills** : Array des compétences avec leur niveau d'expertise\n- Convertir les étoiles visuelles en niveaux numériques (1-5)\n- Préserver les versions et frameworks entre parenthèses\n- Regrouper les compétences connexes intelligemment\n\n### 3. Langues\n- **languages** : Niveau de maîtrise linguistique\n- Standardiser les niveaux : \"Débutant\", \"Scolaire\", \"Courant\", \"Bilingue\"\n\n### 4. Formation\n- **diplomas** : Diplômes par ordre chronologique décroissant\n- Extraire l'année et le titre complet\n\n### 5. Synthèse d'Expériences\n- **experienceSummary** : Vue condensée de toutes les expériences\n- Format tabulaire avec période, durée, entreprise, rôle\n\n### 6. Expériences Détaillées\n- **experiences** : Détail complet de chaque mission\n- Préserver la chronologie (plus récent en premier)\n- Structurer : période, entreprise, rôle, projet, méthodologie, équipe, responsabilités, environnement technique\n\n## Règles de Conversion des Niveaux\n\n**Étoiles vers Niveaux numériques :**\n- 1 étoile = 1 (Débutant/Théorique)\n- 2 étoiles = 2 (Junior)  \n- 3 étoiles = 3 (Confirmé)\n- 4 étoiles = 4 (Senior)\n- 5 étoiles = 5 (Expert)\n\n**Gestion des Données Manquantes :**\n- Champs texte manquants : chaîne vide \"\"\n- Arrays manquants : tableau vide []\n- Si impossible d'extraire le niveau d'une compétence : attribuer niveau 3 par défaut\n\n## Adaptation selon le Profil\n\n**Développeurs** : Mettre l'accent sur les technologies, frameworks, langages\n**Business Analysts** : Privilégier les outils d'analyse, méthodologies, certifications  \n**Chefs de Projet** : Souligner les méthodologies, certifications projet, expérience management\n**Product Owners** : Highlighting frameworks Agile, outils de gestion produit\n\n## Contraintes de Sortie\n\n1. **JSON valide uniquement** - Pas de markdown, commentaires ou texte supplémentaire\n2. **Préservation linguistique** - Maintenir la langue originale du CV\n3. **Cohérence des dates** - Respecter les formats de dates originaux\n4. **Complétude** - Tous les champs requis doivent être présents même si vides\n\n## Validation Finale\n\nAvant output, vérifier :\n- Structure JSON complète et valide\n- Cohérence des niveaux de compétences\n- Chronologie des expériences respectée\n- Données personnelles correctement extraites\n- Environnements techniques bien catégorisés"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        1240,
+        760
+      ],
+      "id": "bf1cbf2d-cb24-4ce8-a423-6138122de994",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"name\": \"string - Trigramme du consultant\",\n  \"title\": \"string - Titre professionnel principal\", \n  \"experience\": \"string - Nombre d'années d'expérience\",\n  \"skills\": [\n    {\n      \"name\": \"string - Nom de la compétence avec versions si applicable\",\n      \"level\": \"number - Niveau de 1 à 5\",\n      \"category\": \"string - Catégorie optionnelle (Backend, Frontend, Tools, etc.)\"\n    }\n  ],\n  \"languages\": [\n    {\n      \"language\": \"string - Nom de la langue\",\n      \"level\": \"string - Niveau (Débutant, Scolaire, Courant, Bilingue)\"\n    }\n  ],\n  \"diplomas\": [\n    {\n      \"year\": \"string - Année d'obtention\",\n      \"title\": \"string - Intitulé complet du diplôme\"\n    }\n  ],\n  \"certifications\": [\n    {\n      \"year\": \"string - Année d'obtention\",\n      \"title\": \"string - Nom de la certification\"\n    }\n  ],\n  \"experienceSummary\": [\n    {\n      \"period\": \"string - Période d'emploi\",\n      \"duration\": \"string - Durée de l'expérience\", \n      \"company\": \"string - Nom de l'entreprise\",\n      \"role\": \"string - Poste occupé\"\n    }\n  ],\n  \"experiences\": [\n    {\n      \"period\": \"string - Dates de début et fin\",\n      \"company\": \"string - Nom de l'entreprise cliente\",\n      \"duration\": \"string - Durée de la mission\",\n      \"role\": \"string - Intitulé du poste\",\n      \"project\": \"string - Description du projet ou contexte\",\n      \"methodology\": \"string - Méthodologie utilisée (Agile, Scrum, etc.)\",\n      \"team\": \"string - Composition et taille de l'équipe\",\n      \"responsibilities\": [\n        \"string - Liste des responsabilités et réalisations\"\n      ],\n      \"environment\": [\n        {\n          \"category\": \"string - Catégorie technique (Backend, Frontend, Database, etc.)\",\n          \"tools\": \"string - Outils et technologies utilisés\"\n        }\n      ]\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1460,
+        980
+      ],
+      "id": "73df1930-1e2d-413a-9849-d4e09b8cd101",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Générateur de CV standardisé au format Klanik (KonForm)\n// Version simplifiée pour éviter les problèmes de JSON\n\nfunction main() {\n  try {\n    // Récupérer les données depuis le nœud AI Agent\n    const aiAgentOutput = $input.first().json;\n    \n    // Générer un HTML simple pour test\n    const htmlOutput = `\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>CV Klanik</title>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 20px; }\n    .header { background: #0046FF; color: white; padding: 20px; }\n    .content { padding: 20px; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>DOSSIER TECHNIQUE KLANIK</h1>\n  </div>\n  <div class=\"content\">\n    <h2>CV Transformé</h2>\n    <p>Données extraites et structurées avec succès.</p>\n  </div>\n</body>\n</html>`;\n    \n    // Configuration pour PDFshift\n    return [{\n      json: {\n        source: htmlOutput,\n        landscape: false,\n        use_print: true,\n        format: \"A4\",\n        margin: \"0.5in\"\n      }\n    }];\n  } catch (error) {\n    console.error('Erreur lors de la génération HTML:', error);\n    return [{\n      json: {\n        error: error.message,\n        source: '<html><body><h1>Erreur de génération</h1></body></html>'\n      }\n    }];\n  }\n}\n\nreturn main();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        760
+      ],
+      "id": "acb06582-94cd-4b22-b64e-d34bd5536acb",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.pdfshift.io/v3/convert/pdf",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "sk_c2e0b883fa41e4d8de7912e4d3e4c27769584b3f"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "={{ $json.source }}"
+            },
+            {
+              "name": "landscape",
+              "value": "false"
+            },
+            {
+              "name": "use_print",
+              "value": "false"
+            },
+            {
+              "name": "format",
+              "value": "a4"
+            },
+            {
+              "name": "margin",
+              "value": "0.5in"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "Klanik.pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1960,
+        760
+      ],
+      "id": "7836ddb9-cc7b-4742-b791-b114581fd724",
+      "name": "PDFshift"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "03c2874d-473a-4de2-a4bc-3ccde725f1fc",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        760
+      ],
+      "id": "c81615a3-6b99-42dc-95a3-b82f8899637c",
+      "name": "Webhook",
+      "webhookId": "03c2874d-473a-4de2-a4bc-3ccde725f1fc"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [
+        2260,
+        760
+      ],
+      "id": "6ac01839-b867-4eca-a211-c3e0f873b50c",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        980
+      ],
+      "id": "9d82a12c-31b9-4829-bc11-230b91ae2cd1",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "1UwynRgPlyTE6qxw",
+          "name": "Morgan"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Text Processing": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "PDFshift",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDFshift": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Text Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "44ca85c2-af7a-4608-9e73-f97ff40018ab",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8599d7845a778242eb2b590f9276e0b22e25a242e7728a8fa6887cb7c35c668a"
+  },
+  "id": "aHyMbhXPMri6ryDN",
+  "tags": []
+}
