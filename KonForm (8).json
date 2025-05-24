@@ -1,0 +1,437 @@
+{
+  "name": "KonForm",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        580,
+        760
+      ],
+      "id": "f181d90a-82b6-47da-96c1-76ebe0697cc2",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.data }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=# System Prompt: KonForm CV Parser pour Klanik\n\nVous êtes un agent IA spécialisé dans l'extraction et la structuration de données de CV pour le cabinet de conseil Klanik. Votre mission est de transformer un contenu de CV non structuré (issu d'OCR) en données JSON structurées selon le format Klanik.\n\n## Rôle et Objectif\n\nExtraire avec précision les informations d'un CV et les structurer en JSON pour générer automatiquement un document technique Klanik standardisé, professionnel et cohérent.\n\n## Instructions de Parsing\n\n### 1. Informations Personnelles\n- **name** : Nom/initiales du consultant (ex: \"YBE\", \"MBE\")\n- **title** : Titre professionnel exact (ex: \"Développeur Java\", \"Business Analyst\")\n- **experience** : Nombre d'années d'expérience (format numérique en string)\n\n### 2. Compétences Techniques\n- **skills** : Array des compétences avec leur niveau d'expertise\n- Convertir les étoiles visuelles en niveaux numériques (1-5)\n- Préserver les versions et frameworks entre parenthèses\n- Regrouper les compétences connexes intelligemment\n\n### 3. Langues\n- **languages** : Niveau de maîtrise linguistique\n- Standardiser les niveaux : \"Débutant\", \"Scolaire\", \"Courant\", \"Bilingue\"\n\n### 4. Formation\n- **diplomas** : Diplômes par ordre chronologique décroissant\n- Extraire l'année et le titre complet\n\n### 5. Synthèse d'Expériences\n- **experienceSummary** : Vue condensée de toutes les expériences\n- Format tabulaire avec période, durée, entreprise, rôle\n\n### 6. Expériences Détaillées\n- **experiences** : Détail complet de chaque mission\n- Préserver la chronologie (plus récent en premier)\n- Structurer : période, entreprise, rôle, projet, méthodologie, équipe, responsabilités, environnement technique\n\n## Règles de Conversion des Niveaux\n\n**Étoiles vers Niveaux numériques :**\n- 1 étoile = 1 (Débutant/Théorique)\n- 2 étoiles = 2 (Junior)  \n- 3 étoiles = 3 (Confirmé)\n- 4 étoiles = 4 (Senior)\n- 5 étoiles = 5 (Expert)\n\n**Gestion des Données Manquantes :**\n- Champs texte manquants : chaîne vide \"\"\n- Arrays manquants : tableau vide []\n- Si impossible d'extraire le niveau d'une compétence : attribuer niveau 3 par défaut\n\n## Adaptation selon le Profil\n\n**Développeurs** : Mettre l'accent sur les technologies, frameworks, langages\n**Business Analysts** : Privilégier les outils d'analyse, méthodologies, certifications  \n**Chefs de Projet** : Souligner les méthodologies, certifications projet, expérience management\n**Product Owners** : Highlighting frameworks Agile, outils de gestion produit\n\n## Contraintes de Sortie\n\n1. **JSON valide uniquement** - Pas de markdown, commentaires ou texte supplémentaire\n2. **Préservation linguistique** - Maintenir la langue originale du CV\n3. **Cohérence des dates** - Respecter les formats de dates originaux\n4. **Complétude** - Tous les champs requis doivent être présents même si vides\n\n## Validation Finale\n\nAvant output, vérifier :\n- Structure JSON complète et valide\n- Cohérence des niveaux de compétences\n- Chronologie des expériences respectée\n- Données personnelles correctement extraites\n- Environnements techniques bien catégorisés"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        1240,
+        760
+      ],
+      "id": "bf1cbf2d-cb24-4ce8-a423-6138122de994",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "content": "## Réception du CV\n\nLe fichier est envoyé via le webhook de l'interface web :  \nhttps://konform-production.up.railway.app/\n",
+        "height": 400,
+        "width": 280
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        120,
+        520
+      ],
+      "id": "6200ff9d-3734-42ef-bf9b-95d7a46f0d23",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Extraction du contenu texte\n\n- Action : Transforme le fichier binaire PDF en texte lisible par l'IA (base64)\n\n- Résultat : Le texte brut du CV est extrait, prêt à être interprété\n\n",
+        "height": 420,
+        "width": 300
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        420,
+        500
+      ],
+      "id": "dcb6d89b-18c3-4ea8-a9a2-a761cce75923",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"name\": \"string - Trigramme du consultant\",\n  \"title\": \"string - Titre professionnel principal\", \n  \"experience\": \"string - Nombre d'années d'expérience\",\n  \"skills\": [\n    {\n      \"name\": \"string - Nom de la compétence avec versions si applicable\",\n      \"level\": \"number - Niveau de 1 à 5\",\n      \"category\": \"string - Catégorie optionnelle (Backend, Frontend, Tools, etc.)\"\n    }\n  ],\n  \"languages\": [\n    {\n      \"language\": \"string - Nom de la langue\",\n      \"level\": \"string - Niveau (Débutant, Scolaire, Courant, Bilingue)\"\n    }\n  ],\n  \"diplomas\": [\n    {\n      \"year\": \"string - Année d'obtention\",\n      \"title\": \"string - Intitulé complet du diplôme\"\n    }\n  ],\n  \"certifications\": [\n    {\n      \"year\": \"string - Année d'obtention\",\n      \"title\": \"string - Nom de la certification\"\n    }\n  ],\n  \"experienceSummary\": [\n    {\n      \"period\": \"string - Période d'emploi\",\n      \"duration\": \"string - Durée de l'expérience\", \n      \"company\": \"string - Nom de l'entreprise\",\n      \"role\": \"string - Poste occupé\"\n    }\n  ],\n  \"experiences\": [\n    {\n      \"period\": \"string - Dates de début et fin\",\n      \"company\": \"string - Nom de l'entreprise cliente\",\n      \"duration\": \"string - Durée de la mission\",\n      \"role\": \"string - Intitulé du poste\",\n      \"project\": \"string - Description du projet ou contexte\",\n      \"methodology\": \"string - Méthodologie utilisée (Agile, Scrum, etc.)\",\n      \"team\": \"string - Composition et taille de l'équipe\",\n      \"responsibilities\": [\n        \"string - Liste des responsabilités et réalisations\"\n      ],\n      \"environment\": [\n        {\n          \"category\": \"string - Catégorie technique (Backend, Frontend, Database, etc.)\",\n          \"tools\": \"string - Outils et technologies utilisés\"\n        }\n      ]\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1460,
+        980
+      ],
+      "id": "73df1930-1e2d-413a-9849-d4e09b8cd101",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "content": "## AI Agent - Structuration intelligente via un prompt\n\nC’est le cœur du système :\n\n- Un prompt très détaillé guide l’agent IA (LangChain + GPT-4.1-mini) pour transformer le texte non structuré du CV en un objet JSON parfaitement conforme au schéma attendu par Klanik\n\n\n- Cet agent gère la détection des sections, l’extraction des compétences, des expériences, des diplômes, tout en respectant la langue et la mise en forme d’origine.\n\n## => Etape \"Structured Output Parser\" dans les tools\n\n## Output\n\n- Enfin, le document standardisé est généré, prêt à être transmis au client ou intégré dans les outils internes.",
+        "height": 700,
+        "width": 500,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        220
+      ],
+      "id": "fc92eaa3-4fee-4fa7-9d02-5e524209844b",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Objectif global\n\n- Ce workflow automatise le parsing de CV avec un très haut niveau de structuration et de fiabilité, utile notamment pour :\n\n   -  un ATS (Applicant Tracking System)\n\n   -  des bases de données internes RH\n\n   -  des analyses comparatives de profils\n\n    - des dashboards de compétences",
+        "height": 1300,
+        "width": 2520,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        20,
+        40
+      ],
+      "id": "a1b4a666-a56f-4632-835a-35475ec2dd55",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Conversion du texte en JSON\n\n- Action : Utilise un agent IA (basé sur LangChain) avec un prompt très détaillé\n\n- Fonction : Analyse le texte du CV et le transforme en un objet JSON structuré pour qu'il soit parfaitement lisible par l'agent IA",
+        "height": 500,
+        "width": 360
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        740,
+        420
+      ],
+      "id": "12f8b403-93d9-49e7-87ce-5ae66fa8e53e",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n- Ce node valide la conformité du JSON produit, garantissant que chaque champ est renseigné, que la structure est respectée, et que le document final est exploitable sans retouche",
+        "height": 340,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        940
+      ],
+      "id": "ceb382b9-c0fc-41c3-8c7e-73ce04b90e38",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n## Chat Model\n\n\nIl s'agit du cerveau de l'agent IA qui lui permet de travailler",
+        "height": 340,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        940
+      ],
+      "id": "7b071cc3-c946-4731-b3e4-c2f2ef45a885",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Générateur de CV standardisé au format Klanik (KonForm)\n * Version avec nouvelle mise en page\n * \n * Ce script transforme les données JSON de l'IA Agent\n * en un document HTML/CSS reproduisant fidèlement le design Klanik\n */\n\nfunction generateKlanikCV(data) {\n  // Extraction des données du JSON\n  const output = data.output || {};\n  \n  // Configuration des couleurs Klanik\n  const KLANIK_BLUE = '#0046FF';\n  const KLANIK_LIGHT_BLUE = '#E8F0FF';\n  const GRAY_LIGHT = '#F5F5F5';\n  const GRAY_MEDIUM = '#E0E0E0';\n  const TEXT_GRAY = '#666666';\n  const STAR_COLOR = '#0046FF';\n  \n  // Fonction pour générer les étoiles selon le niveau\n  function generateStars(level) {\n    level = parseInt(level) || 3;\n    if (level < 1 || level > 5) level = 3;\n    const stars = '★'.repeat(level) + '☆'.repeat(5 - level);\n    return `<span class=\"skill-stars\">${stars}</span>`;\n  }\n  \n  // Génération du HTML avec la structure exacte du PDF\n  const html = `\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Dossier Technique KLANIK - ${output.name || ''}</title>\n  <style>\n    /* Reset et configuration de base */\n    * {\n      margin: 0;\n      padding: 0;\n      box-sizing: border-box;\n    }\n    \n    body {\n      font-family: Arial, sans-serif;\n      font-size: 11pt;\n      line-height: 1.4;\n      color: #333;\n      background: #f0f0f0;\n    }\n    \n    /* Format A4 pour impression */\n    .page {\n      width: 210mm;\n      min-height: 297mm;\n      margin: 20px auto;\n      background: white;\n      position: relative;\n      box-shadow: 0 0 20px rgba(0,0,0,0.1);\n      display: flex;\n      overflow: hidden;\n    }\n    \n    @media print {\n      body { background: white; }\n      .page {\n        margin: 0;\n        box-shadow: none;\n        page-break-after: always;\n      }\n    }\n    \n    /* Barre latérale bleue */\n    .sidebar {\n      width: 60px;\n      background: ${KLANIK_BLUE};\n      padding: 30px 0;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      gap: 30px;\n    }\n    \n    .sidebar-icon {\n      width: 40px;\n      height: 40px;\n      background: rgba(255,255,255,0.2);\n      border-radius: 50%;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      color: white;\n      font-size: 20px;\n    }\n    \n    /* Contenu principal */\n    .main-content {\n      flex: 1;\n      position: relative;\n    }\n    \n    /* Header KLANIK */\n    .klanik-header {\n      padding: 30px 40px 20px;\n      border-bottom: 1px solid ${GRAY_MEDIUM};\n    }\n    \n    .klanik-logo {\n      font-size: 36px;\n      font-weight: bold;\n      color: ${KLANIK_BLUE};\n      letter-spacing: 3px;\n      margin-bottom: 5px;\n    }\n    \n    .klanik-tagline {\n      font-size: 11px;\n      color: ${TEXT_GRAY};\n      text-transform: uppercase;\n      letter-spacing: 1.5px;\n    }\n    \n    /* Bandeau titre */\n    .document-title-band {\n      background: ${KLANIK_BLUE};\n      color: white;\n      padding: 15px 40px;\n      font-size: 24px;\n      font-weight: bold;\n      text-transform: uppercase;\n      letter-spacing: 2px;\n    }\n    \n    /* Section profil */\n    .profile-section {\n      background: ${KLANIK_LIGHT_BLUE};\n      padding: 20px 40px;\n      text-align: center;\n      font-size: 18px;\n      border-bottom: 3px solid ${KLANIK_BLUE};\n    }\n    \n    .profile-name {\n      color: ${KLANIK_BLUE};\n      font-weight: bold;\n    }\n    \n    .profile-title {\n      color: #D2001C;\n      font-weight: bold;\n    }\n    \n    .profile-experience {\n      color: #006600;\n      font-weight: bold;\n    }\n    \n    /* Contenu */\n    .content {\n      padding: 30px 40px 60px;\n    }\n    \n    /* Sections */\n    .section {\n      margin-bottom: 20px;\n    }\n    \n    .section-title {\n      background: ${KLANIK_BLUE};\n      color: white;\n      padding: 8px 15px;\n      font-size: 14px;\n      font-weight: bold;\n      margin-bottom: 15px;\n      display: flex;\n      align-items: center;\n      gap: 8px;\n    }\n    \n    .section-icon {\n      font-size: 16px;\n    }\n    \n    /* Compétences */\n    .skills-grid {\n      display: grid;\n      grid-template-columns: repeat(3, 1fr);\n      gap: 8px 15px;\n      margin-bottom: 20px;\n    }\n    \n    .skill-item {\n      display: flex;\n      justify-content: space-between;\n      align-items: center;\n      padding: 4px 8px;\n      background: #F8F9FA;\n      border: 1px solid ${GRAY_MEDIUM};\n      border-radius: 3px;\n      min-width: 0;\n    }\n    \n    .skill-name {\n      font-size: 10px;\n      color: #333;\n      flex: 1;\n      min-width: 0;\n      overflow: hidden;\n      text-overflow: ellipsis;\n      white-space: nowrap;\n      margin-right: 5px;\n    }\n    \n    .skill-stars {\n      color: ${STAR_COLOR};\n      font-size: 12px;\n      letter-spacing: 0.5px;\n      flex-shrink: 0;\n    }\n    \n    /* Langues */\n    .languages-box {\n      background: ${GRAY_LIGHT};\n      padding: 15px 20px;\n      border-radius: 4px;\n      margin-bottom: 20px;\n      display: flex;\n      gap: 50px;\n      justify-content: center;\n    }\n    \n    .language-item {\n      font-size: 14px;\n    }\n    \n    .language-item strong {\n      color: ${KLANIK_BLUE};\n    }\n    \n    /* Légende */\n    .skills-legend {\n      background: ${GRAY_LIGHT};\n      padding: 8px 12px;\n      border-radius: 3px;\n      font-size: 8px;\n      line-height: 1.4;\n      color: ${TEXT_GRAY};\n      margin-top: 10px;\n    }\n    \n    .legend-item {\n      display: flex;\n      align-items: center;\n      gap: 5px;\n      margin-bottom: 2px;\n    }\n    \n    .legend-stars {\n      color: ${STAR_COLOR};\n      font-weight: bold;\n      min-width: 40px;\n      font-size: 10px;\n    }\n    \n    /* Tableaux */\n    table {\n      width: 100%;\n      border-collapse: collapse;\n      margin-bottom: 15px;\n    }\n    \n    th {\n      background: ${KLANIK_BLUE};\n      color: white;\n      padding: 8px 10px;\n      text-align: left;\n      font-weight: bold;\n      font-size: 11px;\n    }\n    \n    td {\n      padding: 6px 10px;\n      border: 1px solid ${GRAY_MEDIUM};\n      font-size: 10px;\n    }\n    \n    tbody tr:nth-child(even) {\n      background: ${GRAY_LIGHT};\n    }\n    \n    /* Expériences */\n    .experience {\n      margin-bottom: 30px;\n      border: 1px solid ${GRAY_MEDIUM};\n      border-radius: 6px;\n      overflow: hidden;\n      page-break-inside: avoid;\n    }\n    \n    .experience-page {\n      page-break-before: always;\n    }\n    \n    .experience-header {\n      background: ${GRAY_LIGHT};\n      padding: 15px 20px;\n      display: flex;\n      justify-content: space-between;\n      align-items: center;\n      border-bottom: 1px solid ${GRAY_MEDIUM};\n    }\n    \n    .experience-company {\n      font-weight: bold;\n      color: ${KLANIK_BLUE};\n      font-size: 16px;\n    }\n    \n    .experience-period {\n      color: ${TEXT_GRAY};\n      font-size: 13px;\n      text-align: right;\n    }\n    \n    .experience-content {\n      padding: 20px;\n    }\n    \n    .experience-role {\n      font-size: 18px;\n      font-weight: bold;\n      color: #333;\n      margin-bottom: 10px;\n    }\n    \n    .experience-project {\n      font-style: italic;\n      color: ${TEXT_GRAY};\n      margin-bottom: 15px;\n      padding: 10px 15px;\n      background: ${KLANIK_LIGHT_BLUE};\n      border-left: 4px solid ${KLANIK_BLUE};\n      border-radius: 4px;\n      font-size: 13px;\n    }\n    \n    .experience-meta {\n      margin-bottom: 15px;\n      font-size: 13px;\n    }\n    \n    .meta-label {\n      font-weight: bold;\n      color: ${KLANIK_BLUE};\n    }\n    \n    .responsibilities-title {\n      font-weight: bold;\n      color: ${KLANIK_BLUE};\n      margin: 20px 0 10px;\n      font-size: 15px;\n    }\n    \n    .responsibilities {\n      list-style: none;\n      padding-left: 0;\n    }\n    \n    .responsibilities li {\n      position: relative;\n      padding-left: 20px;\n      margin-bottom: 6px;\n      font-size: 13px;\n      line-height: 1.6;\n    }\n    \n    .responsibilities li:before {\n      content: \"•\";\n      position: absolute;\n      left: 0;\n      color: ${KLANIK_BLUE};\n      font-weight: bold;\n    }\n    \n    .tech-environment {\n      margin-top: 20px;\n      padding-top: 15px;\n      border-top: 1px solid ${GRAY_MEDIUM};\n    }\n    \n    .tech-environment-title {\n      color: ${KLANIK_BLUE};\n      font-weight: bold;\n      font-size: 15px;\n      margin-bottom: 10px;\n    }\n    \n    .tech-list {\n      list-style: none;\n    }\n    \n    .tech-list li {\n      margin-bottom: 5px;\n      font-size: 13px;\n    }\n    \n    .tech-category {\n      font-weight: bold;\n      color: #333;\n    }\n    \n    /* Footer */\n    .page-footer {\n      position: absolute;\n      bottom: 20px;\n      right: 40px;\n      color: ${TEXT_GRAY};\n      font-size: 14px;\n      font-weight: bold;\n    }\n    \n    .blue-bar {\n      position: absolute;\n      bottom: 0;\n      left: 60px;\n      right: 0;\n      height: 8px;\n      background: ${KLANIK_BLUE};\n    }\n  </style>\n</head>\n<body>\n  <!-- PAGE 1 -->\n  <div class=\"page\">\n    <div class=\"sidebar\">\n      <div class=\"sidebar-icon\">🛠️</div>\n      <div class=\"sidebar-icon\">💼</div>\n      <div class=\"sidebar-icon\">🎓</div>\n      <div class=\"sidebar-icon\">📋</div>\n    </div>\n    \n    <div class=\"main-content\">\n      <div class=\"klanik-header\">\n        <div class=\"klanik-logo\">KLANIK</div>\n        <div class=\"klanik-tagline\">HUMAN-MADE TECHNOLOGY</div>\n      </div>\n      \n      <div class=\"document-title-band\">DOSSIER TECHNIQUE</div>\n      \n      <div class=\"profile-section\">\n        <span class=\"profile-name\">${output.name || ''}</span> | \n        <span class=\"profile-title\">${output.title || 'Développeur Java'}</span> | \n        <span class=\"profile-experience\">${output.experience || '7'} ans d'expérience</span>\n      </div>\n      \n      <div class=\"content\">\n        <!-- Compétences -->\n        <div class=\"section\">\n          <div class=\"section-title\">\n            <span class=\"section-icon\">🛠️</span>\n            Compétences\n          </div>\n          \n          <div class=\"skills-grid\">\n            ${(output.skills || []).map(skill => `\n              <div class=\"skill-item\">\n                <span class=\"skill-name\">${skill.name || ''}</span>\n                ${generateStars(skill.level)}\n              </div>\n            `).join('')}\n          </div>\n          \n          <div class=\"languages-box\">\n            ${(output.languages || []).map(lang => `\n              <div class=\"language-item\"><strong>${lang.language || ''}</strong> ${lang.level || ''}</div>\n            `).join('')}\n          </div>\n          \n          <div class=\"skills-legend\">\n            <div class=\"legend-item\">\n              <span class=\"legend-stars\">★</span>\n              <span>J'ai des connaissances théoriques sans expérience dans le domaine</span>\n            </div>\n            <div class=\"legend-item\">\n              <span class=\"legend-stars\">★★</span>\n              <span>Junior : J'applique et j'ai besoin d'accompagnement</span>\n            </div>\n            <div class=\"legend-item\">\n              <span class=\"legend-stars\">★★★</span>\n              <span>Confirmé : je maitrise et je suis autonome</span>\n            </div>\n            <div class=\"legend-item\">\n              <span class=\"legend-stars\">★★★★</span>\n              <span>Sénior : Je maitrise et je suis capable de former</span>\n            </div>\n            <div class=\"legend-item\">\n              <span class=\"legend-stars\">★★★★★</span>\n              <span>Expert : je suis un expert technique et j'ai des connaissances très approfondies</span>\n            </div>\n          </div>\n        </div>\n        \n        <!-- Diplômes -->\n        <div class=\"section\">\n          <div class=\"section-title\">\n            <span class=\"section-icon\">🎓</span>\n            Diplômes\n          </div>\n          \n          <table>\n            <tbody>\n              ${(output.diplomas || []).map(diploma => `\n                <tr>\n                  <td style=\"width: 60px; font-weight: bold;\">${diploma.year || ''}</td>\n                  <td>${diploma.title || ''}</td>\n                </tr>\n              `).join('')}\n            </tbody>\n          </table>\n        </div>\n        \n        <!-- Synthèse des expériences -->\n        <div class=\"section\">\n          <div class=\"section-title\">\n            <span class=\"section-icon\">📋</span>\n            Synthèse des expériences professionnelles\n          </div>\n          \n          <table>\n            <thead>\n              <tr>\n                <th style=\"width: 120px;\">Année</th>\n                <th style=\"width: 80px;\">Durée</th>\n                <th>Entreprise</th>\n                <th>Rôle</th>\n              </tr>\n            </thead>\n            <tbody>\n              ${(output.experienceSummary || []).map(exp => `\n                <tr>\n                  <td>${exp.period || ''}</td>\n                  <td>${exp.duration || ''}</td>\n                  <td>${exp.company || ''}</td>\n                  <td>${exp.role || ''}</td>\n                </tr>\n              `).join('')}\n            </tbody>\n          </table>\n        </div>\n      </div>\n      \n      <div class=\"page-footer\">Page 1/${output.experiences ? output.experiences.length + 1 : 2}</div>\n      <div class=\"blue-bar\"></div>\n    </div>\n  </div>\n\n  <!-- PAGES EXPERIENCES -->\n  ${(output.experiences || []).map((exp, index) => `\n    <div class=\"page\">\n      <div class=\"sidebar\">\n        <div class=\"sidebar-icon\">👨‍💻</div>\n      </div>\n      \n      <div class=\"main-content\">\n        <div class=\"klanik-header\">\n          <div class=\"klanik-logo\">KLANIK</div>\n        </div>\n        \n        <div class=\"content\">\n          <div class=\"section\">\n            <div class=\"section-title\">\n              <span class=\"section-icon\">👨‍💻</span>\n              Expériences professionnelles\n            </div>\n            \n            <div class=\"experience\">\n              <div class=\"experience-header\">\n                <div class=\"experience-company\">${exp.company || ''}</div>\n                <div class=\"experience-period\">${exp.period || ''}<br>${exp.duration || ''}</div>\n              </div>\n              \n              <div class=\"experience-content\">\n                <div class=\"experience-role\">${exp.role || ''}</div>\n                \n                <div class=\"experience-project\">\n                  ${exp.project || ''}\n                </div>\n                \n                <div class=\"experience-meta\">\n                  <p><span class=\"meta-label\">Méthodologie :</span> ${exp.methodology || ''}</p>\n                  <p><span class=\"meta-label\">Équipe :</span> ${exp.team || ''}</p>\n                </div>\n                \n                <h4 class=\"responsibilities-title\">Détail des réalisations</h4>\n                <ul class=\"responsibilities\">\n                  ${(exp.responsibilities || []).map(resp => `\n                    <li>${resp}</li>\n                  `).join('')}\n                </ul>\n                \n                <div class=\"tech-environment\">\n                  <h4 class=\"tech-environment-title\">Environnement technique :</h4>\n                  <ul class=\"tech-list\">\n                    ${(exp.environment || []).map(env => `\n                      <li><span class=\"tech-category\">${env.category || ''} :</span> ${env.tools || ''}</li>\n                    `).join('')}\n                  </ul>\n                </div>\n              </div>\n            </div>\n          </div>\n        </div>\n        \n        <div class=\"page-footer\">Page ${index + 2}/${output.experiences.length + 1}</div>\n        <div class=\"blue-bar\"></div>\n      </div>\n    </div>\n  `).join('')}\n\n</body>\n</html>`;\n\n  return html;\n}\n\n/**\n * Fonction principale pour N8N\n * Génère le HTML basé sur les données de l'IA Agent\n */\nfunction main() {\n  try {\n    // Récupérer les données depuis le nœud AI Agent\n    const aiAgentOutput = $input.first().json;\n    \n    // Générer le HTML avec les données structurées\n    const htmlOutput = generateKlanikCV(aiAgentOutput);\n    \n    // Configuration pour PDFshift\n    return [{\n      json: {\n        source: htmlOutput,\n        landscape: false,\n        use_print: true,\n        format: \"A4\",\n        margin: \"0mm\",\n        pdf_options: {\n          \"format\": \"A4\",\n          \"printBackground\": true,\n          \"preferCSSPageSize\": true,\n          \"displayHeaderFooter\": false\n        },\n        sandbox: false\n      }\n    }];\n  } catch (error) {\n    console.error('Erreur lors de la génération HTML:', error);\n    return [{\n      json: {\n        error: error.message,\n        source: '<html><body><h1>Erreur de génération</h1><p>' + error.message + '</p></body></html>'\n      }\n    }];\n  }\n}\n\n// Exécuter la fonction principale\nreturn main();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        760
+      ],
+      "id": "acb06582-94cd-4b22-b64e-d34bd5536acb",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.pdfshift.io/v3/convert/pdf",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "sk_c2e0b883fa41e4d8de7912e4d3e4c27769584b3f"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "={{ $json.source }}"
+            },
+            {
+              "name": "landscape",
+              "value": "false"
+            },
+            {
+              "name": "use_print",
+              "value": "false"
+            },
+            {
+              "name": "format",
+              "value": "a4"
+            },
+            {
+              "name": "margin",
+              "value": "0.5in"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "Klanik.pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1960,
+        760
+      ],
+      "id": "7836ddb9-cc7b-4742-b791-b114581fd724",
+      "name": "PDFshift"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "03c2874d-473a-4de2-a4bc-3ccde725f1fc",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        760
+      ],
+      "id": "c81615a3-6b99-42dc-95a3-b82f8899637c",
+      "name": "Webhook",
+      "webhookId": "03c2874d-473a-4de2-a4bc-3ccde725f1fc"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [
+        2260,
+        760
+      ],
+      "id": "6ac01839-b867-4eca-a211-c3e0f873b50c",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "content": "## Mise en page de la structure html\n\n - Ce noeud intègre les données variables à la structure html du futur pdf ",
+        "height": 400,
+        "width": 220
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1640,
+        520
+      ],
+      "id": "b418342b-9fd7-414e-86c0-c0c034ecb72c",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Convertion du fichier en pdf\n\n - Convertit le fichier généré en pdf\n",
+        "height": 340
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1880,
+        580
+      ],
+      "id": "3ee2cce3-d12f-4d5e-984a-633de657cce5",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## Téléchargement du fichier en pdf \n",
+        "height": 280,
+        "width": 300
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2140,
+        640
+      ],
+      "id": "2e78edd5-fd5f-47b9-9e08-cec82a027442",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        980
+      ],
+      "id": "9d82a12c-31b9-4829-bc11-230b91ae2cd1",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "1UwynRgPlyTE6qxw",
+          "name": "Morgan"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  // Récupération des données textuelles depuis Extract from File\n  const extractedData = $input.first().json.data;\n  \n  // Validation de la présence de données\n  if (!extractedData || typeof extractedData !== 'string') {\n    throw new Error('Aucune donnée textuelle extraite du document');\n  }\n  \n  // Nettoyage et formatage du texte\n  const cleanedText = extractedData\n    .replace(/\\r\\n/g, '\\n')\n    .replace(/\\r/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .replace(/\\s+/g, ' ')\n    .trim();\n  \n  return [{\n    json: {\n      data: cleanedText,\n      metadata: {\n        extractionStatus: 'success',\n        contentLength: cleanedText.length,\n        processingMethod: 'direct_docx_extraction'\n      }\n    }\n  }];\n  \n} catch (error) {\n  return [{\n    json: {\n      data: '',\n      metadata: {\n        extractionStatus: 'error',\n        error: error.message,\n        processingMethod: 'direct_docx_extraction'\n      }\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        80
+      ],
+      "id": "fa8db226-9a20-410f-8e4f-972e5c4702f1",
+      "name": "Code de preprocessing"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "PDFshift",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDFshift": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code de preprocessing": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "44ca85c2-af7a-4608-9e73-f97ff40018ab",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8599d7845a778242eb2b590f9276e0b22e25a242e7728a8fa6887cb7c35c668a"
+  },
+  "id": "aHyMbhXPMri6ryDN",
+  "tags": []
+}
