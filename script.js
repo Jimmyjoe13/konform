@@ -291,7 +291,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const response = await fetch(N8N_WEBHOOK_URL, {
                 method: 'POST',
-                body: formData
+                body: formData,
+                mode: 'no-cors' // Added to bypass CORS policy for testing
                 // Note: Don't set Content-Type header - browser handles it automatically for FormData
             });
 
